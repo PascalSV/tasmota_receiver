@@ -1,6 +1,6 @@
 export interface Env {
     "TASMOTA-READINGS": D1Database;
-    INGEST_TOKEN: string;
+    TASMOTA_INGEST_TOKEN: string;
 }
 
 function ignoreRequest(): Response {
@@ -53,7 +53,7 @@ export default {
         }
 
         const token = getBearerToken(request.headers.get("Authorization"));
-        if (!token || token !== env.INGEST_TOKEN) {
+        if (!token || token !== env.TASMOTA_INGEST_TOKEN) {
             return ignoreRequest();
         }
 
