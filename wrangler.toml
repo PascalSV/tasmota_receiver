@@ -2,8 +2,12 @@ name = "tasmota-receiver"
 main = "src/index.ts"
 compatibility_date = "2026-03-13"
 
+[[routes]]
+pattern = "tasmota.everyday-apps.org"
+custom_domain = true
+
 [[d1_databases]]
-binding = "DB"
-database_name = "tasmota_meter"
-database_id = "00000000-0000-0000-0000-000000000000"
+binding = "TASMOTA-READINGS"
+database_name = "tasmota-readings"
+database_id = "99700874-01dc-435a-9481-b6c863af0154"
 migrations_dir = "migrations"
