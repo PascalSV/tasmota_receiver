@@ -14,6 +14,10 @@ function ignoreRequest(): Response {
     return new Response(null, { status: 204 });
 }
 
+function notFoundResponse(): Response {
+    return new Response("Not Found", { status: 404 });
+}
+
 function toFiniteNumber(value: unknown): number | null {
     if (typeof value === "number") {
         return Number.isFinite(value) ? value : null;
@@ -25,15 +29,6 @@ function toFiniteNumber(value: unknown): number | null {
     }
 
     return null;
-}
-
-function getBearerToken(authorizationHeader: string | null): string | null {
-    if (!authorizationHeader) {
-        return null;
-    }
-
-    const match = authorizationHeader.match(/^Bearer\s+(.+)$/i);
-    return match?.[1]?.trim() || null;
 }
 
 function formatUtcTimestamp(date: Date): string {
@@ -65,46 +60,35 @@ export default {
             return Response.json({ ok: true });
         }
 
-        if (request.method !== "POST" || url.pathname !== "/ingest") {
+        if (request.method !== "GET" || url.pathname !== "/data") {
             console.warn("Unhandled request", requestContext);
-            return new Response("Not Found", { status: 404 });
+            return notFoundResponse();
         }
 
-        console.info("Ingest request received", {
+        console.info("WebSend ingest request received", {
             ...requestContext,
-            contentType: request.headers.get("Content-Type"),
-            contentLength: request.headers.get("Content-Length"),
-            authorizationPresent: request.headers.has("Authorization"),
+            queryTokenPresent: url.searchParams.has("token"),
+            queryInputPresent: url.searchParams.has("input"),
+            queryOutputPresent: url.searchParams.has("output"),
         });
 
-        const token = getBearerToken(request.headers.get("Authorization"));
+        const token = url.searchParams.get("token");
         if (!token || token !== env.TASMOTA_INGEST_TOKEN) {
             console.warn("Ingest request rejected", {
                 ...requestContext,
-                reason: !token ? "missing_or_invalid_authorization_header" : "token_mismatch",
+                reason: !token ? "missing_token_query_param" : "token_mismatch",
             });
             return ignoreRequest();
         }
 
-        let payload: unknown;
-        try {
-            payload = await request.json();
-        } catch (error) {
-            console.warn("Invalid JSON payload", {
-                ...requestContext,
-                error: error instanceof Error ? error.message : String(error),
-            });
-            return new Response("Invalid JSON payload", { status: 400 });
-        }
-
-        const payloadRecord = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : null;
-        const input = toFiniteNumber(payloadRecord?.input);
-        const output = toFiniteNumber(payloadRecord?.output);
+        const input = toFiniteNumber(url.searchParams.get("input"));
+        const output = toFiniteNumber(url.searchParams.get("output"));
 
         if (input === null || output === null) {
             console.warn("Invalid ingest values", {
                 ...requestContext,
-                payloadKeys: payloadRecord ? Object.keys(payloadRecord) : [],
+                rawInput: url.searchParams.get("input"),
+                rawOutput: url.searchParams.get("output"),
                 input,
                 output,
             });
